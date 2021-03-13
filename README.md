@@ -25,7 +25,7 @@ available to the latest. Plus, it was fun.
 
 ## Feedback
 
-If you find wny problems with this program, please let me
+If you find any problems with this program, please let me
 know at <al@simonshome.org>. I'm not running a bug tracker 
 for this repo at this time. If you are successful using this
 with a WS-2902 or other Ambient station, or have a backup
