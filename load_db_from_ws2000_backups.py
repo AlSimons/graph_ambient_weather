@@ -33,14 +33,14 @@ import os
 # sqlite3 provides an SQL relational database contained in a single file.
 import sqlite3
 
-# Some global (this this file variables)
+# Some global (to this file) variables
 database = None
 db_conn = None
 
 
 def init_queries(db):
     """
-    For sqlite3.  Parallel routine needed if we add Mariadb support.
+    For sqlite3.  A parallel routine will be needed if we add Mariadb support.
     Create the db if needed, and create a connection to it.
     :param db: The name of the database
     :return: None
@@ -121,16 +121,27 @@ def find_latest_data_file():
     to the top of the directory tree containing the weather data backups.
     :return: The full path to the desired file.
     """
-    # This is a Windows path specific to Al's system.  If on Mac or Linux,
-    # use the right path syntax. Iif I were making this generally available,
-    # this would have to be a command line parameter.
+    # Use the sample backup file from the current directory.
+    directory = '.'
+
+    # To use live data, this would probably be a more complex system-specific
+    # path. For instance, on the system this was developed on, this is the
+    # path used.
     directory = r'c:\Users\simons\Documents\weather_station_data\backups_from_ws2000\*\\'
-    filename_pattern = 'Backup-*.CSV'
-    file_list = glob(os.path.join(directory, filename_pattern))
+
     #
     # The directory wildcarded in the directory glob pattern is the date,
     # helpfully in the yyyymmdd format so we can use simple lexical ordering
     # to find the most recent (up-to-date) file.
+    # If I were making this generally available, this would have to be a
+    # command line parameter.
+
+    # The filename pattern used for WS-2000 backups.
+    filename_pattern = 'Backup-*.CSV'
+    file_list = glob(os.path.join(directory, filename_pattern))
+    #
+    # Glob doesn't return the filenames in any particular order, so we have
+    # to sort them.
     desired_file = sorted(file_list)[-1]
     print(desired_file)
     return desired_file
@@ -156,9 +167,10 @@ def add_row(row):
     # preventing a miscreant from damaging the database. It isn't really
     # needed here, because we are taking data from a known, trusted source (our
     # weather station backup), but it doesn't matter.  ALWAYS, ALWAYS do this.
-    # See https://www.explainxkcd.com/wiki/index.php/Little_Bobby_Tables
+    # See https://xkcd.com/327/, and the explanation at
+    # https://www.explainxkcd.com/wiki/index.php/Little_Bobby_Tables
     # for more detail. (Everyone who ever touches a database should read
-    # the above link!)
+    # the above links!)
     c.execute("""
         INSERT INTO wx_data (
             date_time,

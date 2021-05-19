@@ -26,8 +26,8 @@ def parse_args(data_types):
                         help="Date of last desired data. "
                              "Must be in the format YYYY-MM-DD."
                              "Default: latest available")
-    parser.add_argument('-n', '--num-points', type=int, default=500,
-                        help="Number of points to plot. Default=500")
+    parser.add_argument('-n', '--num-points', type=int, default=1000,
+                        help="Number of points to plot. Default=1000")
     args = parser.parse_args()
     data_type_list = args.data_type.split(',')
     if len(data_type_list) > 2:
@@ -109,20 +109,21 @@ def find_right_date_interval(start, end):
     # So we take our entire date range and divide it by 90, to get the
     # number of days between each tick.
     num_days = end - start
-    interval = math.ceil(num_days.days / 90)
+    interval = math.ceil(num_days.days / 128)
     if interval == 0:
         interval = 1
     return interval
 
 
-def plot_it(date_and_data, data_types, start, end, num_points, all_data_types):
-    start = "Earliest" if start is None else start
-    end = "Latest" if end is None else end
-
+def plot_it(date_and_data, data_types, num_points, all_data_types):
     # Extract the dates from our database return, and turn them into
     # datetime.datetimes.
     dates = [datetime.datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S')
              for x in date_and_data]
+    start = datetime.datetime.strftime(dates[0], '%Y-%m-%d')
+    end = datetime.datetime.strftime(dates[-1], '%Y-%m-%d')
+    num_days = (dates[-1] - dates[0]).days
+    print(dates[0], dates[-1])
     num_points = min(num_points, len(dates))
 
     dts = []
@@ -130,8 +131,8 @@ def plot_it(date_and_data, data_types, start, end, num_points, all_data_types):
     for dt in data_types:
         dts.append(all_data_types[dt][1])
 
-    plt.figure(figsize=(19, 9), num="{} {} to {} ({} points)".
-               format(", ".join(dts), start, end, num_points))
+    plt.figure(figsize=(19, 9), num="{} {} to {} ({} days, {} points)".
+               format(", ".join(dts), start, end, num_days, num_points))
     plt.subplots_adjust(hspace=.5, wspace=.16,
                         top=.97, bottom=.11,
                         left=.06, right=.97)
@@ -145,8 +146,8 @@ def plot_it(date_and_data, data_types, start, end, num_points, all_data_types):
             # split the plot space in half
             plt.subplot(211 + n)
 
-        plt.title("{} {} to {} ({} points)".format(dts[n], start, end,
-                                                   num_points))
+        plt.title("{} {} to {} ({} days, {} points)".format(
+            dts[n], start, end, num_days, num_points))
         plt.xticks(rotation=90)
         # Set x-axis major ticks to weekly interval, on Mondays
         plt.gca().xaxis.set_major_locator(
@@ -155,6 +156,8 @@ def plot_it(date_and_data, data_types, start, end, num_points, all_data_types):
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m-%d-%Y'))
         plt.plot(dates, data)
         plt.grid(axis='y')
+        axes = plt.gca()
+        axes.set_xlim(left=dates[0], right=dates[-1])
     plt.show()
 
 
@@ -186,7 +189,7 @@ def main():
     end = args.end_date
     data = get_data(data_types, all_data_types,
                     start, end, args.num_points)
-    plot_it(data, data_types, start, end, args.num_points, all_data_types)
+    plot_it(data, data_types, args.num_points, all_data_types)
 
 
 if __name__ == '__main__':
