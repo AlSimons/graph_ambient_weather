@@ -159,7 +159,10 @@ def add_row(row):
     c = get_cursor()
     row[0] = format_time(row[0])
     for i in range(1, len(row)):
-        row[i] = float(row[i])
+        try:
+            row[i] = float(row[i])
+        except ValueError:
+            row[i] = 0.0
     # The fields named below are in the order they appear as columns in
     # the backup.
     #
