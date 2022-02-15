@@ -110,7 +110,7 @@ def plot_it(date_and_data, num_points):
     num_points = min(num_points, len(dates))
 
     plt.figure(figsize=(19, 9), num="{} to {} ({} days, {} points)".
-               format(start, end, num_days, num_points))
+               format(dates[0], dates[-1], num_days, num_points))
     plt.subplots_adjust(hspace=.5, wspace=.16,
                         top=.97, bottom=.11,
                         left=.06, right=.97)
@@ -123,7 +123,7 @@ def plot_it(date_and_data, num_points):
         plt.subplot(211 + n)
 
         plt.title("{} {} to {} ({} days, {} points)".format(
-            dts[n], start, end, num_days, num_points))
+            dts[n], dates[0], dates[-1], num_days, num_points))
         plt.xticks(rotation=90)
         # Set x-axis major ticks to weekly interval, on Mondays
         plt.gca().xaxis.set_major_locator(
