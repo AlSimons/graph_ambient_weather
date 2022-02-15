@@ -3,4 +3,4 @@ Pipfile
 Pipfile.lock
 kathe_temps.txt
 misc_generated_data_files
-ws2000.db
+*.db

@@ -98,7 +98,8 @@ def create_table():
         daily_rain REAL,
         weekly_rain REAL,
         monthly_rain REAL,
-        yearly_rain REAL)""")
+        yearly_rain REAL,
+        air_quality INT)""")
 
     # Write the table definition out to the database file.
     db_conn.commit()
@@ -174,33 +175,35 @@ def add_row(row):
     # https://www.explainxkcd.com/wiki/index.php/Little_Bobby_Tables
     # for more detail. (Everyone who ever touches a database should read
     # the above links!)
-    c.execute("""
-        INSERT INTO wx_data (
-            date_time,
-            indoor_temp,
-            indoor_humidity,
-            outdoor_temp,
-            outdoor_humidity,
-            dew_point,
-            feels_like,
-            wind,
-            gust,
-            wind_dir,
-            abs_pressure,
-            rel_pressure,
-            solar_radiation,
-            uv_index,
-            hourly_rain,
-            event_rain,
-            daily_rain,
-            weekly_rain,
-            monthly_rain,
-            yearly_rain
-        )VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-            ?, ?, ?, ?, ?, ?, ?)
-    """, row)
-
+    try:
+        c.execute("""
+            INSERT INTO wx_data (
+                date_time,
+                indoor_temp,
+                indoor_humidity,
+                outdoor_temp,
+                outdoor_humidity,
+                dew_point,
+                feels_like,
+                wind,
+                gust,
+                wind_dir,
+                abs_pressure,
+                rel_pressure,
+                solar_radiation,
+                uv_index,
+                hourly_rain,
+                event_rain,
+                daily_rain,
+                weekly_rain,
+                monthly_rain,
+                yearly_rain
+            )VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+                ?, ?, ?, ?, ?, ?, ?)
+        """, row)
+    except sqlite3.IntegrityError as e:
+        print(f"Duplicate timestamp: {row[0]}: End of DST?\n{e}")
 
 def process_file():
     """
