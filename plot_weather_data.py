@@ -28,6 +28,12 @@ def parse_args(data_types):
                              "Default: latest available")
     parser.add_argument('-n', '--num-points', type=int, default=1000,
                         help="Number of points to plot. Default=1000")
+    parser.add_argument('--min', default=False, action='store_true',
+                        help="Summarize by daily minimum value")
+    parser.add_argument('--max', default=False, action='store_true',
+                        help="Summarize by daily maximum value")
+    parser.add_argument('--avg', default=False, action='store_true',
+                        help="Summarize by daily average value")
     args = parser.parse_args()
     data_type_list = args.data_type.split(',')
     if len(data_type_list) > 2:
@@ -59,6 +65,42 @@ def init_queries(db):
 
 def get_cursor():
     return db_conn.cursor()
+
+
+def get_summarized_data(data_types, all_data_types,
+                        start_date, end_date, summarizer):
+    """
+    Get data summarized by day, min, max, average.
+    :param data_types: which data (column) is desired.  Only does one.
+    :param all_data_types: All possible data types.
+    :param start_date:
+    :param end_date:
+    :param summarizer: String: Which summary? "Min", "Max", or "Avg"
+    :return: the query result
+    """
+    if len(data_types) > 1:
+        sys.exit("Can only summarize one value")
+    column = all_data_types[data_types[0]][0]
+    c = get_cursor()
+    params = []
+    query = f'SELECT SUBSTR(date_time, 0, 11) AS day, {summarizer}({column}) from wx_data'
+    select_data = ''
+    if start_date is not None:
+        params.append(start_date)
+        query += ' WHERE day >= ?'
+    if end_date is not None:
+        params.append(end_date)
+        if start_date is None:
+            # No WHERE out yet.
+            query += ' WHERE'
+        else:
+            query += ' AND'
+        query += ' day <= ?'
+    query += ' GROUP BY day'
+
+    c.execute(query, params)
+    result = c.fetchall()
+    return result
 
 
 def get_data(data_types, all_data_types, start_date, end_date, num_points):
@@ -115,11 +157,17 @@ def find_right_date_interval(start, end):
     return interval
 
 
-def plot_it(date_and_data, data_types, num_points, all_data_types):
+def plot_it(date_and_data, data_types, num_points, all_data_types, summarizer):
     # Extract the dates from our database return, and turn them into
     # datetime.datetimes.
-    dates = [datetime.datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S')
-             for x in date_and_data]
+    try:
+        dates = [datetime.datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S')
+                 for x in date_and_data]
+    except ValueError:
+        # If we're summarizing, the date info doesn't have times.
+        dates = [datetime.datetime.strptime(x[0], '%Y-%m-%d')
+                 for x in date_and_data]
+
     start = datetime.datetime.strftime(dates[0], '%Y-%m-%d')
     end = datetime.datetime.strftime(dates[-1], '%Y-%m-%d')
     num_days = (dates[-1] - dates[0]).days
@@ -131,6 +179,9 @@ def plot_it(date_and_data, data_types, num_points, all_data_types):
     for dt in data_types:
         dts.append(all_data_types[dt][1])
 
+    if summarizer:
+        # Summarizing one data type.
+        dts[0] = summarizer + ' ' + dts[0]
     plt.figure(figsize=(19, 9), num="{} {} to {} ({} days, {} points)".
                format(", ".join(dts), start, end, num_days, num_points))
     plt.subplots_adjust(hspace=.5, wspace=.16,
@@ -187,9 +238,20 @@ def main():
     data_types = [x.strip() for x in args.data_type.split(',')]
     start = args.start_date
     end = args.end_date
-    data = get_data(data_types, all_data_types,
-                    start, end, args.num_points)
-    plot_it(data, data_types, args.num_points, all_data_types)
+    if args.max or args.min or args.avg:
+        if args.max:
+            summarizer = 'Max'
+        elif args.min:
+            summarizer = 'Min'
+        elif args.avg:
+            summarizer = 'Avg'
+        data = get_summarized_data(data_types, all_data_types,
+                                   start, end, summarizer)
+    else:
+        data = get_data(data_types, all_data_types,
+                        start, end, args.num_points)
+        summarizer = None
+    plot_it(data, data_types, args.num_points, all_data_types, summarizer)
 
 
 if __name__ == '__main__':

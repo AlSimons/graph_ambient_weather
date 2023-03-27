@@ -76,8 +76,11 @@ def create_table():
     # here. There are many excellent tutorials online, including some that
     # focus on using sqlite3.
     c = get_cursor()
+
+    # IMPORTANT: See find_latest_data_file()
     c.execute("DROP TABLE IF EXISTS wx_data")
-    c.execute("""CREATE TABLE wx_data (
+
+    c.execute("""CREATE TABLE IF NOT EXISTS wx_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date_time REAL KEY UNIQUE,
         indoor_temp REAL,
@@ -115,21 +118,17 @@ def get_reader(filepath):
     return reader(f)
 
 
-def find_latest_data_file():
+# If used on another system, this path will need to be changed.
+AMBIENT_DATA = r'D:\DOCUMENTS_SIMONS\weather_station_data\backups_from_ws2000\*\\'
+
+
+def find_latest_data_file(use_earliest=False):
     """
     Searches in the specified (below) directory tree for the latest file.
     This will need to be changed to be used on another system to navigate
     to the top of the directory tree containing the weather data backups.
     :return: The full path to the desired file.
     """
-    # Use the sample backup file from the current directory.
-    directory = '.'
-
-    # To use live data, this would probably be a more complex system-specific
-    # path. For instance, on the system this was developed on, this is the
-    # path used.
-    directory = r'c:\Users\simons\Documents\weather_station_data\backups_from_ws2000\*\\'
-
     #
     # The directory wildcarded in the directory glob pattern is the date,
     # helpfully in the yyyymmdd format so we can use simple lexical ordering
@@ -139,7 +138,16 @@ def find_latest_data_file():
 
     # The filename pattern used for WS-2000 backups.
     filename_pattern = 'Backup-*.CSV'
-    file_list = glob(os.path.join(directory, filename_pattern))
+    file_list = glob(os.path.join(AMBIENT_DATA, filename_pattern))
+
+    #
+    # IMPORTANT:
+    # The latest data file no longer contains the earliest data. So we have
+    # to find both the last file containing the earliest data and the latest
+    # file. We get called twice, in the first one we
+    # filter our dirs for "EARLIEST_DATA_DO_NOT_DELETE".
+    if use_earliest:
+        file_list = [x for x in file_list if "EARLIEST_DATA_DO_NOT_DELETE" in x]
     #
     # Glob doesn't return the filenames in any particular order, so we have
     # to sort them.
@@ -158,6 +166,13 @@ def add_row(row):
     """
     # The cursor is the magic handle for operating on the database.
     c = get_cursor()
+
+    # On March 1, 2022 the instrument seemed to lock up and I had to
+    # power cycle.  In the database, it wrote several records with
+    # bizarre timestamps.  Just ignore them.
+    if row[0].startswith('2081/1/14'):
+        return
+
     row[0] = format_time(row[0])
     for i in range(1, len(row)):
         try:
@@ -201,17 +216,19 @@ def add_row(row):
             )VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
                 ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT DO NOTHING
         """, row)
     except sqlite3.IntegrityError as e:
         print(f"Duplicate timestamp: {row[0]}: End of DST?\n{e}")
 
-def process_file():
+
+def process_file(use_earliest=False):
     """
     Find the latest file, get a CSV reader for it, and process each row in
     turn.
     :return: None
     """
-    path = find_latest_data_file()
+    path = find_latest_data_file(use_earliest=use_earliest)
     r = get_reader(path)
     # The first row of the file is column headers, not data. Skip over it
     # using next() on the reader.
@@ -241,7 +258,8 @@ def main():
     """
     init_queries('ws2000')
     create_table()
-    process_file()
+    process_file(use_earliest=True)
+    process_file(use_earliest=False)
 
 
 if __name__ == '__main__':

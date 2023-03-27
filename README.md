@@ -2,7 +2,7 @@
 
 This is a pair of simple programs intended to graph one or
 two data sets from the backup file created by the Ambient 
-WS-2000 oersonal weather station.  I suspect that the backup
+WS-2000 personal weather station.  I suspect that the backup
 file for the WS-2902 is very similar, if not identical, so 
 probably only small tweaks would be needed to work with that 
 station.
